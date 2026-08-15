@@ -1,0 +1,40 @@
+name: Deploy Portfolio
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to Google Cloud VM
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+
+          script: |
+            cd /home/deploy/devops-portfolio
+
+            echo "=== Pull source ==="
+            git pull origin main
+
+            echo "=== Build Docker image ==="
+            docker build -t devops-portfolio:latest .
+
+            echo "=== Remove old container ==="
+            docker rm -f portfolio || true
+
+            echo "=== Start new container ==="
+            docker run -d \
+              --name portfolio \
+              --restart unless-stopped \
+              -p 127.0.0.1:8080:80 \
+              devops-portfolio:latest
+
+            echo "=== Container status ==="
+            docker ps
